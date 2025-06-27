@@ -1,0 +1,20 @@
+{
+  "name": "@toolbarthomas/jsis",
+  "version": "0.1.0",
+  "description": "Javascript Signed Integer Storage",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node ./node/build.mjs",
+    "pretest": "npm run build",
+    "test": "node ./dist/index.js"
+  },
+  "author": "Thomas van der Velde <contact@toolbarthomas.net>",
+  "license": "MIT",
+  "devDependencies": {
+    "@toolbarthomas/argumentje": "^0.1.6",
+    "esbuild": "^0.25.5",
+    "prettier": "^3.6.1",
+    "typescript": "^5.8.3"
+  }
+}

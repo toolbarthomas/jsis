@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "declaration": true,
+    "lib": [
+      "ES2020",
+      "esnext"
+    ],
+    "target": "ES2020",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "module": "es6",
+    "outDir": "./dist",
+    "plugins": [],
+    "rootDir": "./src",
+    "strict": true,
+    "types": [
+      "node",
+    ],
+    "typeRoots": [
+      "./src",
+    ],
+  },
+  "include": [
+    "src/**.ts"
+  ],
+  "exclude": [],
+}
