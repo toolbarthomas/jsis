@@ -293,16 +293,6 @@ class JSIS {
     return result
   }
 
-  static seed(seed: number) {
-    let state = seed
-
-    return function () {
-      state = (1664525 * state + 1013904223) % 4294967296
-
-      return state / 4294967296
-    }
-  }
-
   /**
    * Get the start address for the given field within the requested row.
    *
@@ -449,7 +439,7 @@ for (let i = 0; i < 4; i++) {
 }
 
 for (let i = 0; i < 4; i++) {
-  console.log('HASH 10', JSIS.hash('Thumbnail', 10, undefined, i + 1))
+  console.log('HASH 10', JSIS.hash('wallpaper', 10, undefined, i + 1))
 }
 
 // console.log('True', JSIS.encode(true))
