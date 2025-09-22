@@ -1,6 +1,17 @@
 import { Encodable, Decodable, Field, FieldArguments, ROM, Schema } from './types'
 
 class JSIS {
+  // static charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+  static charset = [
+    ...Array.from({ length: 10 }, (_, index) => {
+      return String.fromCharCode(48 + index)
+    }),
+    ...Array.from({ length: 26 }, (_, index) => {
+      return String.fromCharCode(65 + index)
+    })
+  ].join('')
+
   /**
    * Defines the available Types to store within the Integer Array
    */
@@ -254,6 +265,45 @@ class JSIS {
   }
 
   /**
+   *
+   * Blob 0 = HASH = 512
+   * Blob 1 = Hash = 512
+   *
+   */
+
+  static hash(key: string, row?: number, size = 16, a = 0x02455, c = 0x0c091, m = 0x38f40) {
+    const chars = key.split('').reduce((commit, current) => {
+      return commit + current.charCodeAt(0)
+    }, 0)
+
+    const float = parseFloat(`${row || 0}.${chars}${key.length}`)
+    let result = ''
+    let state = float
+    let i = 0
+
+    while (i < size) {
+      // Simple pseudo-random transformation
+      state = (state * a + c) % m // LCG-like
+      const idx = Math.floor((state / m) * JSIS.charset.length)
+      result += JSIS.charset[idx] || ''
+
+      i++
+    }
+
+    return result
+  }
+
+  static seed(seed: number) {
+    let state = seed
+
+    return function () {
+      state = (1664525 * state + 1013904223) % 4294967296
+
+      return state / 4294967296
+    }
+  }
+
+  /**
    * Get the start address for the given field within the requested row.
    *
    * @param key
@@ -393,6 +443,14 @@ console.log(
   JSIS.read('firstname', schema, rom, 1),
   JSIS.read('subscribed', schema, rom, 1)
 )
+
+for (let i = 0; i < 4; i++) {
+  console.log('HASH', JSIS.hash('Thumbnail', undefined, undefined, i + 1))
+}
+
+for (let i = 0; i < 4; i++) {
+  console.log('HASH 10', JSIS.hash('Thumbnail', 10, undefined, i + 1))
+}
 
 // console.log('True', JSIS.encode(true))
 // console.log('False', JSIS.encode(false))
