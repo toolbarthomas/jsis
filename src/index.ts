@@ -305,8 +305,6 @@ class JSIS {
     const chunk = rom.subarray(pointer, pointer + blocks)
     const type = schema.fields[k].type
 
-    console.log('AA', key, chunk, type)
-
     return JSIS.decode(chunk, type)
   }
 
@@ -334,12 +332,13 @@ class JSIS {
       return true
     }
 
-    let blocks = schema.fields[k].blocks
+    const blocks = schema.fields[k].blocks
+    let i = 0
 
-    while (blocks) {
-      blocks--
+    while (i < blocks) {
+      rom[pointer + i] = i < encoded.length ? encoded[i] : JSIS.BLANK
 
-      rom[pointer + blocks] = encoded.length < blocks ? JSIS.BLANK : encoded[blocks]
+      i++
     }
 
     return true
@@ -374,7 +373,8 @@ const { rom, schema } = JSIS.create(
   }
 )
 
-console.log('Schema', schema, rom)
+console.log('Schema', schema)
+
 console.log(
   'Write',
   JSIS.write('firstname', 'John Doe', schema, rom),
