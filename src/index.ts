@@ -265,32 +265,66 @@ class JSIS {
   }
 
   /**
+   * Generates a deterministic pseudo-random string based on the given key and
+   * optional row.
+   * It uses a combination of a linear congruential generator (LCG) and integer
+   * mixing to produce a spread of characters from the defined charset.
    *
-   * Blob 0 = HASH = 512
-   * Blob 1 = Hash = 512
-   *
+   * @param key The input string to hash.
+   * @param row Optional row index to vary the seed.
+   * @param size The desired length of the resulting hash string.
+   * @param a Multiplier constant for the LCG.
+   * @param c Increment constant for the LCG.
+   * @param m LCG Modulus to ensure the state wraps correctly in 32-bit space.
+   * @param ax First mixing constant for the base seed.
+   * @param bx Second mixing constant to further diffuse seed bits.
+   * @param rx Row mixing constant to spread row influence across bits.
+   * @param dx Shift amount for the intermediate mixing
    */
+  static hash(
+    key: string,
+    row?: number,
+    size = 16,
+    a = 0x19660d,
+    c = 0x3c6ef35f,
+    m = 0x100000000,
+    ax = 0x1f123bb5,
+    bx = 0xa56fa5b3,
+    rx = 0x9e3779b9,
+    dx = 3
+  ) {
+    const rid = (row || 0) + 1
 
-  static hash(key: string, row?: number, size = 16, a = 0x02455, c = 0x0c091, m = 0x38f40) {
-    const chars = key.split('').reduce((commit, current) => {
-      return commit + current.charCodeAt(0)
-    }, 0)
-
-    const float = parseFloat(`${row || 0}.${chars}${key.length}`)
-    let result = ''
-    let state = float
+    let seed = rid
     let i = 0
+    const len = key.length
 
-    while (i < size) {
-      // Simple pseudo-random transformation
-      state = (state * a + c) % m // LCG-like
-      const idx = Math.floor((state / m) * JSIS.charset.length)
-      result += JSIS.charset[idx] || ''
-
+    while (i < len) {
+      seed += key.charCodeAt(i) * (i + 1) * rid
       i++
     }
 
-    return result
+    seed ^= rid * rx
+
+    seed ^= seed >>> JSIS.BITS
+    seed = Math.imul(seed, ax)
+    seed ^= seed >>> (JSIS.BITS - dx)
+    seed = Math.imul(seed, bx)
+    seed ^= seed >>> JSIS.BITS
+
+    let state = seed >>> 0
+    let resultIndex = 0
+
+    const result: string[] = new Array(size)
+
+    while (resultIndex < size) {
+      state = (state * a + c) >>> 0
+      const idx = Math.floor((state / m) * JSIS.charset.length)
+      result[resultIndex] = JSIS.charset[idx]
+      resultIndex++
+    }
+
+    return result.join('')
   }
 
   /**
@@ -435,11 +469,11 @@ console.log(
 )
 
 for (let i = 0; i < 4; i++) {
-  console.log('HASH', JSIS.hash('Thumbnail', undefined, undefined, i + 1))
+  console.log('HASH', JSIS.hash('foo', undefined, undefined, i + 1))
 }
 
 for (let i = 0; i < 4; i++) {
-  console.log('HASH 10', JSIS.hash('wallpaper', 10, undefined, i + 1))
+  console.log('HASH 10', JSIS.hash('foobar', 10, undefined, i + 1))
 }
 
 // console.log('True', JSIS.encode(true))
