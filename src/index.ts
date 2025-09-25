@@ -1,8 +1,6 @@
 import { Encodable, Decodable, Field, FieldArguments, ROM, Schema } from './types'
 
 class JSIS {
-  // static charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-
   static charset = [
     ...Array.from({ length: 10 }, (_, index) => {
       return String.fromCharCode(48 + index)
@@ -60,14 +58,14 @@ class JSIS {
     const schema = fields ? JSIS.defineSchema(...fields) : undefined
     const pointer = schema.header?.length || 0
 
+    const rom = schema && new Int16Array(pointer + schema.range * (rows || JSIS.ROWS))
+    if (rom && schema.header) {
+      rom.set(schema.header, 0)
+    }
+
     return {
       schema,
-      rom: schema
-        ? Int16Array.from(
-            { length: pointer + schema.range * (rows || JSIS.ROWS) },
-            (_, index) => schema.header[index] ?? 0
-          )
-        : undefined
+      rom
     }
   }
 
@@ -135,7 +133,6 @@ class JSIS {
       const headerLength = key.length + 3
 
       for (let index = 0; index < headerLength; index++) {
-        // Key
         if (index < key.length) {
           schema.header[startIndex + index] = -key.charCodeAt(index)
         }
@@ -276,7 +273,7 @@ class JSIS {
           const pointer = index * JSIS.STRING
 
           encoded[pointer] = code & JSIS.RANGE
-          encoded[pointer + 1] = code >> JSIS.BITS // high bits (usually 0 for BMP)
+          encoded[pointer + 1] = code >> JSIS.BITS
 
           index++
         }
@@ -284,16 +281,11 @@ class JSIS {
         return encoded
 
       default:
-        // // Does not work
-        // if (value < JSIS.MIN || value > JSIS.MAX) {
-        //   throw Error(`Integer overflow detected: ${Math.abs(value)}/${JSIS.MAX}`)
-        // }
-
         const blocks = Number.isInteger(value)
           ? Math.floor(JSIS.INTEGER / 2)
           : Math.floor(JSIS.FLOAT / 2)
 
-        response = new Array(blocks)
+        response = new Int16Array(blocks)
         const isInteger = Number.isInteger(value)
 
         if (isInteger) {
@@ -322,11 +314,9 @@ class JSIS {
 
     const length = chunk.length
     let i = 0
-    let currentKey = ''
-    let currentFlag = 0
     let stackPointer = 0
 
-    while (i < chunk.length) {
+    while (i < length) {
       const point = chunk[i]
 
       if (!i && point >= 0) {
@@ -334,58 +324,46 @@ class JSIS {
       }
 
       if (point < 0) {
-        currentFlag = 0
-        currentKey += String.fromCharCode(Math.abs(point))
+        let key = ''
 
-        if (chunk[i + 1] >= 0) {
-          schema.fields[currentKey] = {
-            name: currentKey,
-            index: 0,
-            blocks: 0
-          }
+        while (i < length && chunk[i] < 0) {
+          key += String.fromCharCode(-chunk[i])
+          i++
         }
+
+        // We expect 3 header values after the decoded key.
+        const blocks = chunk[i++] ?? 0
+        const index = chunk[i++] ?? 0
+        const typeMarker = chunk[i++] ?? JSIS.STRING
+
+        let type: FieldArguments['type']
+        switch (typeMarker) {
+          case JSIS.BOOLEAN:
+            type = 'boolean'
+            break
+          case JSIS.FLOAT:
+            type = 'float'
+            break
+          case JSIS.INTEGER:
+            type = 'integer'
+            break
+          default:
+            type = 'string'
+            break
+        }
+
+        schema.fields[key] = { name: key, index, blocks, type }
+        schema.range += blocks
+
+        if (!stackPointer) {
+          stackPointer = i
+        }
+
+        continue
       }
 
-      if (point >= 0 && currentKey) {
-        switch (currentFlag) {
-          case 0:
-            schema.fields[currentKey].blocks = point
-            schema.range += point
-            break
-
-          case 1:
-            schema.fields[currentKey].index = point
-            break
-
-          default:
-            switch (point) {
-              case JSIS.BOOLEAN:
-                schema.fields[currentKey].type = 'boolean'
-                break
-
-              case JSIS.FLOAT:
-                schema.fields[currentKey].type = 'float'
-                break
-
-              case JSIS.INTEGER:
-                schema.fields[currentKey].type = 'integer'
-                break
-
-              default:
-                schema.fields[currentKey].type = 'string'
-                break
-            }
-
-            currentKey = ''
-
-            if (chunk[i + 1] >= 0 && !stackPointer) {
-              stackPointer = i + 1
-            }
-
-            break
-        }
-
-        currentFlag++
+      if (point >= 0) {
+        break
       }
 
       i++
@@ -394,7 +372,10 @@ class JSIS {
     return {
       ...schema,
       stackPointer,
-      headers: chunk instanceof Int16Array ? chunk.subarray(0, stackPointer) : chunk,
+      headers:
+        chunk instanceof Int16Array
+          ? chunk.subarray(0, stackPointer)
+          : chunk.slice(0, stackPointer),
       rom: chunk instanceof Int16Array ? chunk.subarray(stackPointer) : new Int16Array(schema.range)
     }
   }
@@ -504,7 +485,7 @@ class JSIS {
   }
 
   static read(key: string, schema: Schema, rom: ROM, row?: number) {
-    if (!key) {
+    if (!key || !schema || !rom) {
       return
     }
 
