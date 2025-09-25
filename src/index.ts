@@ -236,7 +236,7 @@ class JSIS {
           index++
         }
 
-        return characters.join('')
+        return characters.join('') || undefined
 
       default:
         return value.length === JSIS.INTEGER / 2
@@ -550,6 +550,10 @@ class JSIS {
 
     if (encoded === undefined || pointer == undefined) {
       return
+    }
+
+    if (pointer >= rom.length) {
+      return false
     }
 
     if (typeof encoded === 'number') {

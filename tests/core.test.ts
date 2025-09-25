@@ -102,6 +102,11 @@ describe('Core::Parsing', () => {
   it('Defined Storage context', () => assert.equal(parsed.rom instanceof Int16Array, true))
   it('Defined stackPointer', () => assert.equal(typeof parsed.stackPointer, 'number'))
 
+  it('Decouples Storage', () => {
+    assert.notEqual(parsed.rom, rom)
+    assert.equal(parsed.rom.length < rom?.length, true)
+  })
+
   it('Matches range', () => assert.equal(schema?.range, parsed.range))
 })
 
@@ -132,4 +137,27 @@ describe('Core::IO', () => {
   it('Read/Write score', () => assert.equal(score, mockRow.score))
   it('Read/Write subscribed', () => assert.equal(subscribed, mockRow.subscribed))
   it('Read/Write description', () => assert.equal(subscribed, mockRow.subscribed))
+
+  it('Update Field', () => {
+    const updateAge = JSIS.write('age', mockRow.age + 1, schema, parsed.rom)
+
+    assert.equal(updateAge, true)
+    assert.equal(JSIS.read('age', schema, parsed.rom), mockRow.age + 1)
+  })
+
+  it('Read/Write specific row', () => {
+    const mockName = 'Jane'
+    const mockRow = 3
+
+    JSIS.write('firstname', mockName, schema, parsed.rom, mockRow)
+    assert.equal(mockName, JSIS.read('firstname', schema, parsed.rom, mockRow))
+  })
+
+  it('Catch overflow', () => {
+    const mockName = 'Bobby'
+    const mockRow = 20
+
+    assert.equal(JSIS.write('firstname', mockName, schema, parsed.rom, mockRow), false)
+    assert.equal(JSIS.read('firstname', schema, parsed.rom, mockRow), undefined)
+  })
 })
