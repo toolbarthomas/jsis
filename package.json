@@ -6,14 +6,18 @@
   "type": "module",
   "scripts": {
     "build": "node ./node/build.mjs",
-    "pretest": "npm run build",
-    "test": "node ./dist/index.js"
+    "predev": "npm run build",
+    "pretest": "node ./node/test.mjs",
+    "test": "node node_modules/mocha/bin/mocha.js \"dist/tests/*.test.cjs\"",
+    "dev": "node ./dist/index.js"
   },
   "author": "Thomas van der Velde <contact@toolbarthomas.net>",
   "license": "MIT",
   "devDependencies": {
     "@toolbarthomas/argumentje": "^0.1.6",
     "esbuild": "^0.25.5",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.2",
     "prettier": "^3.6.1",
     "typescript": "^5.8.3"
   }

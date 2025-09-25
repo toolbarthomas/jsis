@@ -222,9 +222,15 @@ class JSIS {
         const characters: string[] = new Array(value.length / JSIS.STRING)
 
         while (index < characters.length) {
-          characters[index] = String.fromCharCode(
-            (value[index * JSIS.STRING + 1] << JSIS.BITS) | (value[index * JSIS.STRING] & 0xffff)
-          )
+          const low = value[index * JSIS.STRING] & JSIS.RANGE
+          const high = value[index * JSIS.STRING + 1]
+          const code = (high << JSIS.BITS) | low
+
+          if (code === 0) {
+            break
+          }
+
+          characters[index] = String.fromCharCode(code)
 
           index++
         }
@@ -316,6 +322,11 @@ class JSIS {
     const k = key.toLowerCase()
 
     const fields = Object.values(schema.fields)
+
+    if (!schema.fields[k]) {
+      return
+    }
+
     let count = fields.length
     const index = schema.fields[k].index
 
@@ -471,11 +482,14 @@ class JSIS {
     return {
       ...schema,
       stackPointer,
-      headers:
+      header:
         chunk instanceof Int16Array
           ? chunk.subarray(0, stackPointer)
           : chunk.slice(0, stackPointer),
-      rom: chunk instanceof Int16Array ? chunk.subarray(stackPointer) : new Int16Array(schema.range)
+      rom:
+        chunk instanceof Int16Array
+          ? chunk.subarray(stackPointer, chunk.length)
+          : new Int16Array(schema.range)
     }
   }
 
@@ -494,6 +508,11 @@ class JSIS {
 
     const k = key.toLowerCase()
     const pointer = JSIS.getPointer(key, schema, row)
+
+    if (!schema.fields || !schema.fields[k]) {
+      return
+    }
+
     const blocks = schema.fields[k].blocks
     const chunk = rom.subarray(pointer, pointer + blocks)
     const type = schema.fields[k].type
@@ -523,9 +542,12 @@ class JSIS {
     }
 
     const encoded = JSIS.encode(value)
+
     const pointer = JSIS.getPointer(k, schema, row)
 
     if (encoded === undefined) {
+      console.warn(`Unable to encode: ${key}`)
+
       return
     }
 
@@ -547,73 +569,5 @@ class JSIS {
     return true
   }
 }
-
-const { rom, schema } = JSIS.create(
-  8,
-  {
-    key: 'Firstname',
-    type: 'string'
-  },
-  {
-    key: 'Budget',
-    type: 'float'
-  },
-  {
-    key: 'Lastname',
-    type: 'string',
-    size: 13
-  },
-  {
-    key: 'Age',
-    type: 'integer'
-  },
-  {
-    key: 'Subscribed',
-    type: 'boolean'
-  },
-  {
-    key: 'Followers'
-  }
-)
-
-console.log('Schema', schema)
-console.log('Parse', JSIS.parse(rom))
-
-// console.log(
-//   'Write',
-//   JSIS.write('firstname', 'John Doe', schema, rom),
-//   JSIS.write('budget', Math.PI, schema, rom),
-//   JSIS.write('age', 0xfffff, schema, rom),
-//   JSIS.write('firstname', 'Jane Doe', schema, rom, 1),
-//   JSIS.write('subscribed', true, schema, rom),
-//   JSIS.write('subscribed', false, schema, rom, 1)
-// )
-console.log(
-  'Read',
-  JSIS.read('firstname', schema, rom),
-  JSIS.read('budget', schema, rom),
-  JSIS.read('age', schema, rom),
-  JSIS.read('subscribed', schema, rom),
-  JSIS.read('firstname', schema, rom, 1),
-  JSIS.read('subscribed', schema, rom, 1)
-)
-
-// for (let i = 0; i < 4; i++) {
-//   console.log('HASH', JSIS.hash('foo', undefined, undefined, i + 1))
-// }
-
-// for (let i = 0; i < 4; i++) {
-//   console.log('HASH 10', JSIS.hash('foobar', 10, undefined, i + 1))
-// }
-
-// // console.log('True', JSIS.encode(true))
-// // console.log('False', JSIS.encode(false))
-// // console.log('Float', JSIS.encode(Math.PI), JSIS.decode(JSIS.encode(Math.PI), 'float'), Math.PI)
-// // console.log('Integer', JSIS.encode(0x1000000), JSIS.decode(JSIS.encode(0x1000000)), 0x1000000)
-// console.log('String', JSIS.decode(JSIS.encode('Lorem🤫'), 'string'), 'Lorem🤫')
-
-// console.log('Header', JSIS.parse(schema?.header))
-
-// // console.log('Boolean', JSIS.MAX, JSIS.encode(true), JSIS.decode(JSIS.encode(true)), true)
 
 export default JSIS
