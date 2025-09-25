@@ -1,7 +1,7 @@
 import JSIS from 'src'
 
 export type Encodable = string | boolean | number
-export type Decodable = number | number[]
+export type Decodable = number | ArrayLike<number>
 export type ROM = Int16Array
 
 export type FieldArguments = {

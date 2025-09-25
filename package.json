@@ -7,8 +7,9 @@
   "scripts": {
     "build": "node ./node/build.mjs --minify && node ./node/build.mjs",
     "predev": "npm run build",
-    "pretest": "node ./node/test.mjs",
-    "test": "node node_modules/mocha/bin/mocha.js \"dist/tests/*.test.cjs\"",
+    "pretest": "tsc --noEmit",
+    "test": "node ./node/test.mjs",
+    "posttest": "node node_modules/mocha/bin/mocha.js \"dist/tests/*.test.cjs\"",
     "dev": "node ./dist/index.js"
   },
   "author": "Thomas van der Velde <contact@toolbarthomas.net>",

@@ -56,7 +56,8 @@ class JSIS {
    */
   static create<T = Schema>(rows: number, ...fields: FieldArguments[]) {
     const schema = fields ? JSIS.defineSchema(...fields) : undefined
-    const pointer = schema.header?.length || 0
+
+    const pointer = schema?.header?.length || 0
 
     const rom = schema && new Int16Array(pointer + schema.range * (rows || JSIS.ROWS))
     if (rom && schema.header) {
@@ -95,16 +96,14 @@ class JSIS {
         continue
       }
 
-      const key = (field.key ?? field.name).toLowerCase()
+      const key = field.key.toLowerCase()
 
       if (schema.fields[key]) {
-        console.warn(`Duplicate key detected: ${key}`)
-
         continue
       }
 
       const type =
-        field.type && JSIS.types.includes(field.type.toLowerCase()) ? field.type : undefined
+        field.type && JSIS.types.includes(field.type.toLowerCase() as any) ? field.type : undefined
 
       const blocks =
         type === 'float'
@@ -129,39 +128,41 @@ class JSIS {
 
       schema.range += Math.ceil(blocks)
 
-      const startIndex = schema.header.length
+      const startIndex = schema?.header?.length || 0
       const headerLength = key.length + 3
 
       for (let index = 0; index < headerLength; index++) {
-        if (index < key.length) {
-          schema.header[startIndex + index] = -key.charCodeAt(index)
-        }
+        if (schema.header) {
+          if (index < key.length) {
+            schema.header[startIndex + index] = -key.charCodeAt(index)
+          }
 
-        if (index === key.length) {
-          schema.header[startIndex + index] = blocks
-        }
+          if (index === key.length) {
+            schema.header[startIndex + index] = blocks
+          }
 
-        if (index === key.length + 1) {
-          schema.header[startIndex + index] = schema.fields[key].index
-        }
+          if (index === key.length + 1) {
+            schema.header[startIndex + index] = schema.fields[key].index
+          }
 
-        if (index > key.length + 1) {
-          switch (type) {
-            case 'boolean':
-              schema.header[startIndex + index] = JSIS.BOOLEAN
-              break
+          if (index > key.length + 1) {
+            switch (type) {
+              case 'boolean':
+                schema.header[startIndex + index] = JSIS.BOOLEAN
+                break
 
-            case 'float':
-              schema.header[startIndex + index] = JSIS.FLOAT
-              break
+              case 'float':
+                schema.header[startIndex + index] = JSIS.FLOAT
+                break
 
-            case 'integer':
-              schema.header[startIndex + index] = JSIS.INTEGER
-              break
+              case 'integer':
+                schema.header[startIndex + index] = JSIS.INTEGER
+                break
 
-            default:
-              schema.header[startIndex + index] = JSIS.STRING
-              break
+              default:
+                schema.header[startIndex + index] = JSIS.STRING
+                break
+            }
           }
         }
       }
@@ -255,7 +256,7 @@ class JSIS {
 
     const type = typeof value
 
-    if (type !== 'number' && !JSIS.types.includes(type)) {
+    if (type !== 'number' && !JSIS.types.includes(type as any)) {
       return
     }
 
@@ -267,10 +268,11 @@ class JSIS {
         return value ? 1 : 0
 
       case 'string':
-        const encoded = new Int16Array(value.length * JSIS.STRING)
+        const str = value as string
+        const encoded = new Int16Array(str.length * JSIS.STRING)
 
-        while (index < value.length) {
-          const code = value.charCodeAt(index)
+        while (index < str.length) {
+          const code = str.charCodeAt(index)
           const pointer = index * JSIS.STRING
 
           encoded[pointer] = code & JSIS.RANGE
@@ -287,12 +289,13 @@ class JSIS {
           : Math.floor(JSIS.FLOAT / 2)
 
         response = new Int16Array(blocks)
-        const isInteger = Number.isInteger(value)
+        const int = value as number
+        const isInteger = Number.isInteger(int)
 
         if (isInteger) {
-          JSIS.integerView.setInt32(0, value, JSIS.ENDIAN)
+          JSIS.integerView.setInt32(0, int, JSIS.ENDIAN)
         } else {
-          JSIS.floatView.setFloat64(0, value, JSIS.ENDIAN)
+          JSIS.floatView.setFloat64(0, int, JSIS.ENDIAN)
         }
 
         while (index < blocks) {
@@ -509,7 +512,7 @@ class JSIS {
     const k = key.toLowerCase()
     const pointer = JSIS.getPointer(key, schema, row)
 
-    if (!schema.fields || !schema.fields[k]) {
+    if (!schema.fields || !schema.fields[k] || pointer === undefined) {
       return
     }
 
@@ -545,9 +548,7 @@ class JSIS {
 
     const pointer = JSIS.getPointer(k, schema, row)
 
-    if (encoded === undefined) {
-      console.warn(`Unable to encode: ${key}`)
-
+    if (encoded === undefined || pointer == undefined) {
       return
     }
 

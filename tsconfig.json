@@ -9,14 +9,11 @@
     "target": "ES2020",
     "esModuleInterop": true,
     "moduleResolution": "node",
-    "module": "es6",
+    "module": "esnext",
     "outDir": "./dist",
     "plugins": [],
     "rootDir": "./src",
     "strict": true,
-    "types": [
-      "node",
-    ],
     "typeRoots": [
       "./src",
     ],
