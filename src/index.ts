@@ -137,17 +137,14 @@ class JSIS {
           schema.header[startIndex + index] = -key.charCodeAt(index)
         }
 
-        // Define block size
         if (index === key.length) {
           schema.header[startIndex + index] = blocks
         }
 
-        // Define index
         if (index === key.length + 1) {
           schema.header[startIndex + index] = schema.fields[key].index
         }
 
-        // Define Index
         if (index > key.length + 1) {
           switch (type) {
             case 'boolean':
@@ -167,8 +164,6 @@ class JSIS {
               break
           }
         }
-
-        // Define Size
       }
     }
 
@@ -355,14 +350,14 @@ class JSIS {
         schema.fields[key] = { name: key, index, blocks, type }
         schema.range += blocks
 
-        if (!stackPointer) {
-          stackPointer = i
-        }
-
         continue
       }
 
       if (point >= 0) {
+        if (!stackPointer) {
+          stackPointer = i
+        }
+
         break
       }
 
