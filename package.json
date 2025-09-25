@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "node ./node/build.mjs",
+    "build": "node ./node/build.mjs --minify && node ./node/build.mjs",
     "predev": "npm run build",
     "pretest": "node ./node/test.mjs",
     "test": "node node_modules/mocha/bin/mocha.js \"dist/tests/*.test.cjs\"",
