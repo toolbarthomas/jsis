@@ -314,26 +314,30 @@ class JSIS {
     }
   }
 
-  static parse(header: number[]) {
+  static parse(chunk: number[] | Int16Array) {
     const schema: Schema = {
       range: 0,
       fields: {}
     }
 
-    const length = header.length
+    const length = chunk.length
     let i = 0
-    let manifest = true
     let currentKey = ''
     let currentFlag = 0
+    let stackPointer = 0
 
-    while (i < header.length) {
-      const point = header[i]
+    while (i < chunk.length) {
+      const point = chunk[i]
+
+      if (!i && point >= 0) {
+        break
+      }
 
       if (point < 0) {
         currentFlag = 0
         currentKey += String.fromCharCode(Math.abs(point))
 
-        if (header[i + 1] >= 0) {
+        if (chunk[i + 1] >= 0) {
           schema.fields[currentKey] = {
             name: currentKey,
             index: 0,
@@ -374,6 +378,10 @@ class JSIS {
 
             currentKey = ''
 
+            if (chunk[i + 1] >= 0 && !stackPointer) {
+              stackPointer = i + 1
+            }
+
             break
         }
 
@@ -381,6 +389,13 @@ class JSIS {
       }
 
       i++
+    }
+
+    return {
+      ...schema,
+      stackPointer,
+      headers: chunk instanceof Int16Array ? chunk.subarray(0, stackPointer) : chunk,
+      rom: chunk instanceof Int16Array ? chunk.subarray(stackPointer) : new Int16Array(schema.range)
     }
   }
 
@@ -567,7 +582,8 @@ const { rom, schema } = JSIS.create(
   }
 )
 
-console.log('Schema', schema, rom)
+console.log('Schema', schema)
+console.log('Parse', JSIS.parse(rom))
 
 // console.log(
 //   'Write',
