@@ -58,10 +58,16 @@ class JSIS {
    */
   static create<T = Schema>(rows: number, ...fields: FieldArguments[]) {
     const schema = fields ? JSIS.defineSchema(...fields) : undefined
+    const pointer = schema.header?.length || 0
 
     return {
       schema,
-      rom: schema ? new Int16Array(schema.range * (rows || JSIS.ROWS)) : undefined
+      rom: schema
+        ? Int16Array.from(
+            { length: pointer + schema.range * (rows || JSIS.ROWS) },
+            (_, index) => schema.header[index] ?? 0
+          )
+        : undefined
     }
   }
 
@@ -74,7 +80,8 @@ class JSIS {
   static defineSchema<T = Schema>(...fields: FieldArguments[]) {
     const schema: Schema = {
       fields: {},
-      range: 0
+      range: 0,
+      header: []
     }
 
     let count = fields.length
@@ -123,6 +130,49 @@ class JSIS {
       }
 
       schema.range += Math.ceil(blocks)
+
+      const startIndex = schema.header.length
+      const headerLength = key.length + 3
+
+      for (let index = 0; index < headerLength; index++) {
+        // Key
+        if (index < key.length) {
+          schema.header[startIndex + index] = -key.charCodeAt(index)
+        }
+
+        // Define block size
+        if (index === key.length) {
+          schema.header[startIndex + index] = blocks
+        }
+
+        // Define index
+        if (index === key.length + 1) {
+          schema.header[startIndex + index] = schema.fields[key].index
+        }
+
+        // Define Index
+        if (index > key.length + 1) {
+          switch (type) {
+            case 'boolean':
+              schema.header[startIndex + index] = JSIS.BOOLEAN
+              break
+
+            case 'float':
+              schema.header[startIndex + index] = JSIS.FLOAT
+              break
+
+            case 'integer':
+              schema.header[startIndex + index] = JSIS.INTEGER
+              break
+
+            default:
+              schema.header[startIndex + index] = JSIS.STRING
+              break
+          }
+        }
+
+        // Define Size
+      }
     }
 
     return schema as T
@@ -261,6 +311,76 @@ class JSIS {
         }
 
         return response
+    }
+  }
+
+  static parse(header: number[]) {
+    const schema: Schema = {
+      range: 0,
+      fields: {}
+    }
+
+    const length = header.length
+    let i = 0
+    let manifest = true
+    let currentKey = ''
+    let currentFlag = 0
+
+    while (i < header.length) {
+      const point = header[i]
+
+      if (point < 0) {
+        currentFlag = 0
+        currentKey += String.fromCharCode(Math.abs(point))
+
+        if (header[i + 1] >= 0) {
+          schema.fields[currentKey] = {
+            name: currentKey,
+            index: 0,
+            blocks: 0
+          }
+        }
+      }
+
+      if (point >= 0 && currentKey) {
+        switch (currentFlag) {
+          case 0:
+            schema.fields[currentKey].blocks = point
+            schema.range += point
+            break
+
+          case 1:
+            schema.fields[currentKey].index = point
+            break
+
+          default:
+            switch (point) {
+              case JSIS.BOOLEAN:
+                schema.fields[currentKey].type = 'boolean'
+                break
+
+              case JSIS.FLOAT:
+                schema.fields[currentKey].type = 'float'
+                break
+
+              case JSIS.INTEGER:
+                schema.fields[currentKey].type = 'integer'
+                break
+
+              default:
+                schema.fields[currentKey].type = 'string'
+                break
+            }
+
+            currentKey = ''
+
+            break
+        }
+
+        currentFlag++
+      }
+
+      i++
     }
   }
 
@@ -447,41 +567,43 @@ const { rom, schema } = JSIS.create(
   }
 )
 
-console.log('Schema', schema)
+console.log('Schema', schema, rom)
 
-console.log(
-  'Write',
-  JSIS.write('firstname', 'John Doe', schema, rom),
-  JSIS.write('budget', Math.PI, schema, rom),
-  JSIS.write('age', 0xfffff, schema, rom),
-  JSIS.write('firstname', 'Jane Doe', schema, rom, 1),
-  JSIS.write('subscribed', true, schema, rom),
-  JSIS.write('subscribed', false, schema, rom, 1)
-)
-console.log(
-  'Read',
-  JSIS.read('firstname', schema, rom),
-  JSIS.read('budget', schema, rom),
-  JSIS.read('age', schema, rom),
-  JSIS.read('subscribed', schema, rom),
-  JSIS.read('firstname', schema, rom, 1),
-  JSIS.read('subscribed', schema, rom, 1)
-)
+// console.log(
+//   'Write',
+//   JSIS.write('firstname', 'John Doe', schema, rom),
+//   JSIS.write('budget', Math.PI, schema, rom),
+//   JSIS.write('age', 0xfffff, schema, rom),
+//   JSIS.write('firstname', 'Jane Doe', schema, rom, 1),
+//   JSIS.write('subscribed', true, schema, rom),
+//   JSIS.write('subscribed', false, schema, rom, 1)
+// )
+// console.log(
+//   'Read',
+//   JSIS.read('firstname', schema, rom),
+//   JSIS.read('budget', schema, rom),
+//   JSIS.read('age', schema, rom),
+//   JSIS.read('subscribed', schema, rom),
+//   JSIS.read('firstname', schema, rom, 1),
+//   JSIS.read('subscribed', schema, rom, 1)
+// )
 
-for (let i = 0; i < 4; i++) {
-  console.log('HASH', JSIS.hash('foo', undefined, undefined, i + 1))
-}
+// for (let i = 0; i < 4; i++) {
+//   console.log('HASH', JSIS.hash('foo', undefined, undefined, i + 1))
+// }
 
-for (let i = 0; i < 4; i++) {
-  console.log('HASH 10', JSIS.hash('foobar', 10, undefined, i + 1))
-}
+// for (let i = 0; i < 4; i++) {
+//   console.log('HASH 10', JSIS.hash('foobar', 10, undefined, i + 1))
+// }
 
-// console.log('True', JSIS.encode(true))
-// console.log('False', JSIS.encode(false))
-// console.log('Float', JSIS.encode(Math.PI), JSIS.decode(JSIS.encode(Math.PI), 'float'), Math.PI)
-// console.log('Integer', JSIS.encode(0x1000000), JSIS.decode(JSIS.encode(0x1000000)), 0x1000000)
-console.log('String', JSIS.decode(JSIS.encode('Lorem🤫'), 'string'), 'Lorem🤫')
+// // console.log('True', JSIS.encode(true))
+// // console.log('False', JSIS.encode(false))
+// // console.log('Float', JSIS.encode(Math.PI), JSIS.decode(JSIS.encode(Math.PI), 'float'), Math.PI)
+// // console.log('Integer', JSIS.encode(0x1000000), JSIS.decode(JSIS.encode(0x1000000)), 0x1000000)
+// console.log('String', JSIS.decode(JSIS.encode('Lorem🤫'), 'string'), 'Lorem🤫')
 
-// console.log('Boolean', JSIS.MAX, JSIS.encode(true), JSIS.decode(JSIS.encode(true)), true)
+// console.log('Header', JSIS.parse(schema?.header))
+
+// // console.log('Boolean', JSIS.MAX, JSIS.encode(true), JSIS.decode(JSIS.encode(true)), true)
 
 export default JSIS

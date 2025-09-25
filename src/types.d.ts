@@ -51,4 +51,5 @@ export type Field = FieldArguments & {
 export type Schema = {
   range: number
   fields: Record<string, Field>
+  header?: number[]
 }
