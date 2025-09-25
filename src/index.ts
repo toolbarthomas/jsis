@@ -301,6 +301,110 @@ class JSIS {
     }
   }
 
+  /**
+   * Get the start address for the given field within the requested row.
+   *
+   * @param key The expected field key
+   * @param schema The required schema
+   * @param row The additional row offset
+   */
+  static getPointer(key: string, schema: Schema, row?: number) {
+    if (!key || !schema || !schema.fields) {
+      return
+    }
+
+    const k = key.toLowerCase()
+
+    const fields = Object.values(schema.fields)
+    let count = fields.length
+    const index = schema.fields[k].index
+
+    let pointer = 0
+
+    while (count) {
+      const currentIndex = fields.length - count
+
+      if (currentIndex >= index) {
+        break
+      }
+
+      pointer += fields[currentIndex].blocks
+
+      count--
+    }
+
+    const range = Math.ceil(
+      fields.reduce((commit, current) => {
+        return commit + (current.blocks ?? 0)
+      }, 0)
+    )
+
+    return range * (row ?? 0) + pointer
+  }
+
+  /**
+   * Generates a deterministic pseudo-random string based on the given key and
+   * optional row.
+   * It uses a combination of a linear congruential generator (LCG) and integer
+   * mixing to produce a spread of characters from the defined charset.
+   *
+   * @param key The input string to hash.
+   * @param row Optional row index to vary the seed.
+   * @param size The desired length of the resulting hash string.
+   * @param a Multiplier constant for the LCG.
+   * @param c Increment constant for the LCG.
+   * @param m LCG Modulus to ensure the state wraps correctly in 32-bit space.
+   * @param ax First mixing constant for the base seed.
+   * @param bx Second mixing constant to further diffuse seed bits.
+   * @param rx Row mixing constant to spread row influence across bits.
+   * @param dx Shift amount for the intermediate mixing
+   */
+  static hash(
+    key: string,
+    row?: number,
+    size = 16,
+    a = 0x19660d,
+    c = 0x3c6ef35f,
+    m = 0x100000000,
+    ax = 0x1f123bb5,
+    bx = 0xa56fa5b3,
+    rx = 0x9e3779b9,
+    dx = 3
+  ) {
+    const rid = (row || 0) + 1
+
+    let seed = rid
+    let i = 0
+    const len = key.length
+
+    while (i < len) {
+      seed += key.charCodeAt(i) * (i + 1) * rid
+      i++
+    }
+
+    seed ^= rid * rx
+
+    seed ^= seed >>> JSIS.BITS
+    seed = Math.imul(seed, ax)
+    seed ^= seed >>> (JSIS.BITS - dx)
+    seed = Math.imul(seed, bx)
+    seed ^= seed >>> JSIS.BITS
+
+    let state = seed >>> 0
+    let resultIndex = 0
+
+    const result: string[] = new Array(size)
+
+    while (resultIndex < size) {
+      state = (state * a + c) >>> 0
+      const idx = Math.floor((state / m) * JSIS.charset.length)
+      result[resultIndex] = JSIS.charset[idx]
+      resultIndex++
+    }
+
+    return result.join('')
+  }
+
   static parse(chunk: number[] | Int16Array) {
     const schema: Schema = {
       range: 0,
@@ -376,109 +480,13 @@ class JSIS {
   }
 
   /**
-   * Generates a deterministic pseudo-random string based on the given key and
-   * optional row.
-   * It uses a combination of a linear congruential generator (LCG) and integer
-   * mixing to produce a spread of characters from the defined charset.
+   * Reads the given key with the existing schema and Integer Array.
    *
-   * @param key The input string to hash.
-   * @param row Optional row index to vary the seed.
-   * @param size The desired length of the resulting hash string.
-   * @param a Multiplier constant for the LCG.
-   * @param c Increment constant for the LCG.
-   * @param m LCG Modulus to ensure the state wraps correctly in 32-bit space.
-   * @param ax First mixing constant for the base seed.
-   * @param bx Second mixing constant to further diffuse seed bits.
-   * @param rx Row mixing constant to spread row influence across bits.
-   * @param dx Shift amount for the intermediate mixing
+   * @param key The existing field key within the defined schema.
+   * @param schema Reads from the required schema.
+   * @param rom Integer Storage to read from.
+   * @param row Read for the selected row.
    */
-  static hash(
-    key: string,
-    row?: number,
-    size = 16,
-    a = 0x19660d,
-    c = 0x3c6ef35f,
-    m = 0x100000000,
-    ax = 0x1f123bb5,
-    bx = 0xa56fa5b3,
-    rx = 0x9e3779b9,
-    dx = 3
-  ) {
-    const rid = (row || 0) + 1
-
-    let seed = rid
-    let i = 0
-    const len = key.length
-
-    while (i < len) {
-      seed += key.charCodeAt(i) * (i + 1) * rid
-      i++
-    }
-
-    seed ^= rid * rx
-
-    seed ^= seed >>> JSIS.BITS
-    seed = Math.imul(seed, ax)
-    seed ^= seed >>> (JSIS.BITS - dx)
-    seed = Math.imul(seed, bx)
-    seed ^= seed >>> JSIS.BITS
-
-    let state = seed >>> 0
-    let resultIndex = 0
-
-    const result: string[] = new Array(size)
-
-    while (resultIndex < size) {
-      state = (state * a + c) >>> 0
-      const idx = Math.floor((state / m) * JSIS.charset.length)
-      result[resultIndex] = JSIS.charset[idx]
-      resultIndex++
-    }
-
-    return result.join('')
-  }
-
-  /**
-   * Get the start address for the given field within the requested row.
-   *
-   * @param key
-   * @param schema
-   * @param row
-   */
-  static getPointer(key: string, schema: Schema, row?: number) {
-    if (!key || !schema || !schema.fields) {
-      return
-    }
-
-    const k = key.toLowerCase()
-
-    const fields = Object.values(schema.fields)
-    let count = fields.length
-    const index = schema.fields[k].index
-
-    let pointer = 0
-
-    while (count) {
-      const currentIndex = fields.length - count
-
-      if (currentIndex >= index) {
-        break
-      }
-
-      pointer += fields[currentIndex].blocks
-
-      count--
-    }
-
-    const range = Math.ceil(
-      fields.reduce((commit, current) => {
-        return commit + (current.blocks ?? 0)
-      }, 0)
-    )
-
-    return range * (row ?? 0) + pointer
-  }
-
   static read(key: string, schema: Schema, rom: ROM, row?: number) {
     if (!key || !schema || !rom) {
       return
@@ -493,6 +501,16 @@ class JSIS {
     return JSIS.decode(chunk, type)
   }
 
+  /**
+   * Encodes and write the defined value to the existing schema and storage
+   * context.
+   *
+   * @param key Writes the encoded value for the existing storage key.
+   * @param value The value to encode and write.
+   * @param schema Encodes the value to write according to the existing schema.
+   * @param rom The actual storage context.
+   * @param row Writes to the additional row offset.
+   */
   static write(key: string, value: Encodable, schema: Schema, rom: ROM, row?: number) {
     if (!key || value === undefined || !schema || !rom) {
       return
@@ -570,15 +588,15 @@ console.log('Parse', JSIS.parse(rom))
 //   JSIS.write('subscribed', true, schema, rom),
 //   JSIS.write('subscribed', false, schema, rom, 1)
 // )
-// console.log(
-//   'Read',
-//   JSIS.read('firstname', schema, rom),
-//   JSIS.read('budget', schema, rom),
-//   JSIS.read('age', schema, rom),
-//   JSIS.read('subscribed', schema, rom),
-//   JSIS.read('firstname', schema, rom, 1),
-//   JSIS.read('subscribed', schema, rom, 1)
-// )
+console.log(
+  'Read',
+  JSIS.read('firstname', schema, rom),
+  JSIS.read('budget', schema, rom),
+  JSIS.read('age', schema, rom),
+  JSIS.read('subscribed', schema, rom),
+  JSIS.read('firstname', schema, rom, 1),
+  JSIS.read('subscribed', schema, rom, 1)
+)
 
 // for (let i = 0; i < 4; i++) {
 //   console.log('HASH', JSIS.hash('foo', undefined, undefined, i + 1))
