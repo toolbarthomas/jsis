@@ -1,4 +1,4 @@
-import JSIS from 'src'
+import JSIS from './index'
 
 export type Encodable = string | boolean | number
 export type Decodable = number | ArrayLike<number>
