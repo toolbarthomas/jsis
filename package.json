@@ -1,6 +1,6 @@
 {
   "name": "@toolbarthomas/jsis",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Javascript Signed Integer Storage",
   "type": "module",
   "types": "./src/index.ts",
