@@ -39,29 +39,25 @@ It allows you to define a schema describing fields and types, encode values into
 
 ## API
 
-#### JSIS.defineSchema(...fields)
-Defines a new schema
+| Method       | Arguments                    | Type                                      | Description                                                      |
+| ------------ | ---------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| defineSchema | fields                       | Field[]                                   | Defines a new Schema                                             |
+| create       | rows, fields                 | Number, Field[]                           | Create and assign a new Schema                                   |
+| write        | key, value, schema, rom, row | String, Value, Schema, Int16Array, Number | Encodes and writes a value to storage                            |
+| read         | key, schema, rom, row        | String, Schema, Int16Array, Number        | Reads and decodes a value from storage.                          |
+| encode       | value                        | Value                                     | Encodes a value into an integer representation                   |
+| decode       | value, type                  | Value, Type                               | Decodes integer data into its original value                     |
+| getPointer   | key, schema, row             | String, Schema, Number                    | Returns the integer offset for a field within the storage buffer |
+| parse        | chunk                        | Int16Array                                | Parses a raw integer buffer into a schema and data view.         |
+| hash         | key, row, size               | String, Number, Number                    | Generates a deterministic pseudo-random string.                  |
 
-#### JSIS.create(rows, ...fields)
-Creates a schema and allocates storage.
+## Definitions
 
-#### JSIS.write(key, value, schema, rom, row)
-Encodes and writes a value to storage.
-
-#### JSIS.read(key, schema, rom, row)
-Reads and decodes a value from storage.
-
-#### JSIS.encode(value)
-Encodes a value into an integer representation.
-
-#### JSIS.decode(value, type)
-Decodes integer data into its original value.
-
-#### JSIS.getPointer(key, schema, row)
-Returns the integer offset for a field within the storage buffer.
-
-#### JSIS.parse(chunk)
-Parses a raw Int16Array or number array into.
-
-#### JSIS.hash(key, row, size)
-Generates a deterministic pseudo-random string.
+| Name   | Property | Type                  |
+| ------ | -------- | --------------------- |
+| Schema | range    | Number                |
+|        | fields   | Number                |
+|        | header?  | Record<string, Field> |
+| Field  | blocks   | Number                |
+|        | index    | Number                |
+|        | name?    | String                |
