@@ -21,3 +21,11 @@ export type Schema = {
   fields: Record<string, Field>
   header?: number[]
 }
+
+export type Scope<M = Middleware> = {
+  currentIndex?: number
+  middleware: M
+  row: <T = M>(index?: number) => Middleware<T>
+}
+
+export type Middleware<T = Record<string, string>> = Record<string, string> & T

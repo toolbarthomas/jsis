@@ -4,6 +4,11 @@ import assert, { equal } from 'assert'
 
 import { describe, it } from 'mocha'
 
+type MockScope = {
+  firstname: string
+  score: number
+}
+
 const mockRow = {
   firstname: 'John',
   score: 4.2,
@@ -160,4 +165,26 @@ describe('Core::IO', () => {
     assert.equal(JSIS.write('firstname', mockName, schema, parsed.rom, mockRow), false)
     assert.equal(JSIS.read('firstname', schema, parsed.rom, mockRow), undefined)
   })
+})
+
+describe('Core::File', () => {
+  const { rom, schema } = JSIS.create(8, ...mockSchema)
+
+  const scope = JSIS.scope<{ firstname: string; score: number }>(schema, rom)
+  const row = scope.row()
+
+  row.firstname = 'ABCDEFGHIKJLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  row.score = 5.24
+
+  console.log('ROW', row.firstname, row.score)
+
+  // const row = scope.row<MockScope>(0)
+
+  // if (row) {
+  //   row.firstname = 3
+  // }
+
+  // console.log(row.firstname)
+
+  console.log('provi', row.firstname)
 })

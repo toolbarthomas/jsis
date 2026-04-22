@@ -1,4 +1,14 @@
-import { Encodable, Decodable, Field, FieldArguments, ROM, Schema } from './types'
+import {
+  Encodable,
+  Decodable,
+  Field,
+  FieldArguments,
+  ROM,
+  Schema,
+  Scope,
+  Resolver,
+  Middleware
+} from './types'
 
 class JSIS {
   static charset = [
@@ -27,6 +37,7 @@ class JSIS {
   static BITS = 16
   static RANGE = 0xffff
   static BLANK = 0
+  static CLAMP = 1 / 0x8000
 
   /**
    * The minimum row amount for a Schematic to use
@@ -532,6 +543,7 @@ class JSIS {
    * @param schema Encodes the value to write according to the existing schema.
    * @param rom The actual storage context.
    * @param row Writes to the additional row offset.
+   * @param strict Apply additional normalization from the defined value.
    */
   static write(key: string, value: Encodable, schema: Schema, rom: ROM, row?: number) {
     if (!key || value === undefined || !schema || !rom) {
@@ -572,6 +584,112 @@ class JSIS {
     }
 
     return true
+  }
+
+  static defineStorageProvider(files?: number, size?: number, namespace?: string) {
+    const range = files || JSIS.BITS * JSIS.BITS
+
+    const storageKey = [namespace || JSIS.name, 'data'].join('.')
+    const fileKey = [namespace || JSIS.name, 'file'].join('.')
+
+    const provider = JSIS.create(range, {
+      key: storageKey,
+      type: 'string',
+      size: size || JSIS.BITS * JSIS.BITS * JSIS.BITS
+    })
+
+    const database = JSIS.create(range, {
+      key: fileKey,
+      type: 'string'
+    })
+
+    return { provider, database }
+  }
+
+  static scope<T = Middleware>(schema: Schema, rom: Rom) {
+    // let middleware: Partial<Middleware> = {}
+
+    const parsed = JSIS.parse(rom)
+
+    const scope: Scope<T> = {
+      currentIndex: undefined,
+      middleware: (function () {
+        const instance: T = {}
+
+        if (!schema || !rom) {
+          return instance
+        }
+
+        Object.keys(schema.fields).forEach((key) => {
+          Object.defineProperty(instance, key, {
+            get: function <V = Encodable>(): V | undefined {
+              const currentIndex = scope.currentIndex
+
+              const type = schema.fields[key].type
+
+              const value = JSIS.read(key, schema, parsed.rom, scope.currentIndex, true)
+
+              if (type === 'float' && typeof value === 'number') {
+                return value - JSIS.CLAMP
+              }
+
+              return value
+            },
+            set: function <V = Encodable>(value: V) {
+              const currentIndex = scope.currentIndex
+
+              const type = schema.fields[key].type
+              let commit: Encodable = value
+
+              const mismatch =
+                !type || (typeof value !== 'number' && type === 'float') || typeof value !== type
+
+              if (mismatch) {
+                switch (type) {
+                  case 'string':
+                    commit = String(value)
+                    break
+                  case 'integer':
+                    commit = typeof value === 'string' ? parseInt(value) : undefined
+                    break
+                  case 'float':
+                    commit =
+                      typeof value === 'string' && value % 1
+                        ? value
+                        : parseFloat(String(value)) + JSIS.CLAMP
+                    break
+                  case 'boolean':
+                    commit = value ? true : false
+                    break
+                  default:
+                    break
+                }
+              }
+
+              if (Number.isNaN(commit)) {
+                return
+              }
+
+              JSIS.write(key, commit, schema, parsed.rom, scope.currentIndex, true)
+            },
+            enumerable: true,
+            configurable: true
+          })
+        })
+        return instance
+      })(),
+      row: function <R = T>(index) {
+        if (this.middleware && this.currentIndex === index) {
+          return this.middleware
+        }
+
+        this.currentIndex = index
+
+        return this.middleware
+      }
+    }
+
+    return scope
   }
 }
 
