@@ -606,17 +606,15 @@ class JSIS {
     return { provider, database }
   }
 
-  // static use(key: string, schema: Schema, rom: Schema, row?: number, value?: Encodable) {
-  //   if (value === undefined || value === null) {
-  //     return JSIS.write(key, value, schema, rom, row)
-  //   }
-
-  //   return JSIS.read(key, schema, rom, row)
-  // }
-
-  static scope<T = Middleware>(schema: Schema, rom: Rom, onUpdate?: Scope['onUpdate']) {
-    // let middleware: Partial<Middleware> = {}
-
+  /**
+   * Defines a scoped Object like interface with additional callback handler
+   * that enables direct getter and setter on the available properties.
+   *
+   * @param schema Encodes & decodes according to the given Schema instance.
+   * @param rom The actual storage context.
+   * @param onUpdate Function handler that is called after a property mutation.
+   */
+  static scope<T = Middleware>(schema: Schema, rom: ROM, onUpdate?: Scope['onUpdate']) {
     const parsed = JSIS.parse(rom)
 
     const scope: Scope<T> = {
@@ -693,6 +691,7 @@ class JSIS {
             configurable: true
           })
         })
+
         return instance
       })(),
       row: function <R = T>(index) {
