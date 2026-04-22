@@ -23,6 +23,7 @@ export type Schema = {
 }
 
 export type Scope<M = Middleware> = {
+  onUpdate: <T = Encodable, R = void>(key: string, value?: T, previousValue?: Encodable) => R
   currentIndex?: number
   middleware: M
   row: <T = M>(index?: number) => Middleware<T>

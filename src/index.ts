@@ -606,12 +606,23 @@ class JSIS {
     return { provider, database }
   }
 
-  static scope<T = Middleware>(schema: Schema, rom: Rom) {
+  // static use(key: string, schema: Schema, rom: Schema, row?: number, value?: Encodable) {
+  //   if (value === undefined || value === null) {
+  //     return JSIS.write(key, value, schema, rom, row)
+  //   }
+
+  //   return JSIS.read(key, schema, rom, row)
+  // }
+
+  static scope<T = Middleware>(schema: Schema, rom: Rom, onUpdate?: Scope['onUpdate']) {
     // let middleware: Partial<Middleware> = {}
 
     const parsed = JSIS.parse(rom)
 
     const scope: Scope<T> = {
+      onUpdate: function (key, value, initial) {
+        return onUpdate(key, value, initial)
+      },
       currentIndex: undefined,
       middleware: (function () {
         const instance: T = {}
@@ -654,8 +665,8 @@ class JSIS {
                     break
                   case 'float':
                     commit =
-                      typeof value === 'string' && value % 1
-                        ? value
+                      typeof value === 'number' && value % 1
+                        ? value + JSIS.CLAMP
                         : parseFloat(String(value)) + JSIS.CLAMP
                     break
                   case 'boolean':
@@ -670,7 +681,13 @@ class JSIS {
                 return
               }
 
+              const current = scope.middleware[key]
+
               JSIS.write(key, commit, schema, parsed.rom, scope.currentIndex, true)
+
+              if (current !== scope.middleware[key]) {
+                scope.onUpdate(key, scope.middleware[key], current)
+              }
             },
             enumerable: true,
             configurable: true

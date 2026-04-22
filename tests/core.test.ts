@@ -170,11 +170,24 @@ describe('Core::IO', () => {
 describe('Core::File', () => {
   const { rom, schema } = JSIS.create(8, ...mockSchema)
 
-  const scope = JSIS.scope<{ firstname: string; score: number }>(schema, rom)
+  const scope = JSIS.scope<{ firstname: string; score: number }>(
+    schema,
+    rom,
+    (key, value, current) => {
+      console.log('ON UPDATE', { key, value, current })
+    }
+  )
+
   const row = scope.row()
 
   row.firstname = 'ABCDEFGHIKJLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  row.score = 5.23
   row.score = 5.24
+  row.score = 5.24
+  row.score = 5.25
+
+  // row.score = '5.24'
+  // row.score = '5.26'
 
   console.log('ROW', row.firstname, row.score)
 
