@@ -7,7 +7,8 @@ import {
   Schema,
   Scope,
   Resolver,
-  Middleware
+  Middleware,
+  Runtime
 } from './types'
 
 class JSIS {
@@ -504,7 +505,7 @@ class JSIS {
         chunk instanceof Int16Array
           ? chunk.subarray(stackPointer, chunk.length)
           : new Int16Array(schema.range)
-    }
+    } as Runtime
   }
 
   /**
@@ -606,6 +607,55 @@ class JSIS {
     return { provider, database }
   }
 
+  static clamp(value: Encodable, type?: Field['type']) {
+    if (!value) {
+      return value
+    }
+
+    if (type === 'float' && typeof value === 'number') {
+      return value - JSIS.CLAMP
+    }
+
+    return value
+  }
+
+  static normalize<T = Encodable>(key: string, value: T, schema: Schema) {
+    const type = schema.fields[key].type
+
+    let commit: undefined | Encodable = value
+
+    const mismatch =
+      !type || (typeof value !== 'number' && type === 'float') || typeof value !== type
+
+    if (mismatch) {
+      switch (type) {
+        case 'string':
+          commit = String(value)
+          break
+        case 'integer':
+          commit = typeof value === 'string' ? parseInt(value) : undefined
+          break
+        case 'float':
+          commit =
+            typeof value === 'number' && value % 1
+              ? value + JSIS.CLAMP
+              : parseFloat(String(value)) + JSIS.CLAMP
+          break
+        case 'boolean':
+          commit = value ? true : false
+          break
+        default:
+          break
+      }
+    }
+
+    if (Number.isNaN(commit)) {
+      return
+    }
+
+    return commit
+  }
+
   /**
    * Defines a scoped Object like interface with additional callback handler
    * that enables direct getter and setter on the available properties.
@@ -615,9 +665,10 @@ class JSIS {
    * @param onUpdate Function handler that is called after a property mutation.
    */
   static scope<T = Middleware>(schema: Schema, rom: ROM, onUpdate?: Scope['onUpdate']) {
-    const parsed = JSIS.parse(rom)
+    const runtime: undefined | Runtime = JSIS.parse(rom)
 
     const scope: Scope<T> = {
+      ram: runtime.rom,
       onUpdate: function (key, value, initial) {
         return onUpdate(key, value, initial)
       },
@@ -632,56 +683,30 @@ class JSIS {
         Object.keys(schema.fields).forEach((key) => {
           Object.defineProperty(instance, key, {
             get: function <V = Encodable>(): V | undefined {
+              if (!scope.ram) {
+                return
+              }
+
               const currentIndex = scope.currentIndex
 
               const type = schema.fields[key].type
 
-              const value = JSIS.read(key, schema, parsed.rom, scope.currentIndex, true)
+              const value = JSIS.read(key, schema, scope.ram, scope.currentIndex, true)
 
-              if (type === 'float' && typeof value === 'number') {
-                return value - JSIS.CLAMP
-              }
-
-              return value
+              return JSIS.clamp(value, type)
             },
             set: function <V = Encodable>(value: V) {
               const currentIndex = scope.currentIndex
 
-              const type = schema.fields[key].type
-              let commit: Encodable = value
+              const commit = JSIS.normalize(key, value, schema)
 
-              const mismatch =
-                !type || (typeof value !== 'number' && type === 'float') || typeof value !== type
-
-              if (mismatch) {
-                switch (type) {
-                  case 'string':
-                    commit = String(value)
-                    break
-                  case 'integer':
-                    commit = typeof value === 'string' ? parseInt(value) : undefined
-                    break
-                  case 'float':
-                    commit =
-                      typeof value === 'number' && value % 1
-                        ? value + JSIS.CLAMP
-                        : parseFloat(String(value)) + JSIS.CLAMP
-                    break
-                  case 'boolean':
-                    commit = value ? true : false
-                    break
-                  default:
-                    break
-                }
-              }
-
-              if (Number.isNaN(commit)) {
+              if (commit === undefined || !scope.ram) {
                 return
               }
 
               const current = scope.middleware[key]
 
-              JSIS.write(key, commit, schema, parsed.rom, scope.currentIndex, true)
+              JSIS.write(key, commit, schema, scope.ram, scope.currentIndex, true)
 
               if (current !== scope.middleware[key]) {
                 scope.onUpdate(key, scope.middleware[key], current)

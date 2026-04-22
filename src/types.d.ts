@@ -22,8 +22,17 @@ export type Schema = {
   header?: number[]
 }
 
+export type Runtime = {
+  stackPointer: number
+  header: number[]
+  rom: ROM
+  range: number
+  fields: Record<string, Field>
+}
+
 export type Scope<M = Middleware> = {
   onUpdate: <T = Encodable, R = void>(key: string, value?: T, previousValue?: Encodable) => R
+  ram?: ROM
   currentIndex?: number
   middleware: M
   row: <T = M>(index?: number) => Middleware<T>

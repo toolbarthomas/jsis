@@ -87,7 +87,7 @@ describe('Command::Create', () => {
 
 describe('Core::Parsing', () => {
   const { rom, schema } = JSIS.create(8, ...mockSchema)
-  const parsed = JSIS.parse(rom)
+  const runtime = JSIS.parse(rom)
 
   it('Has fields', () => assert.equal(Object.keys(schema?.fields).length > 0, true))
   it('Matches fields', () =>
@@ -95,45 +95,46 @@ describe('Core::Parsing', () => {
       Object.keys(schema?.fields)
         .map((e) => e.toLowerCase())
         .sort(),
-      Object.keys(parsed.fields).sort()
+      Object.keys(runtime.fields).sort()
     ))
 
-  it('Parsed fields', () => assert.equal(parsed.fields && parsed.fields instanceof Object, true))
+  it('Parsed fields', () => assert.equal(runtime.fields && runtime.fields instanceof Object, true))
   it('Parsed header', () =>
     assert.equal(
-      (Array.isArray(parsed.header) && parsed.header.length) || parsed.header instanceof Int16Array,
+      (Array.isArray(runtime.header) && runtime.header.length) ||
+        runtime.header instanceof Int16Array,
       true
     ))
-  it('Defined Storage context', () => assert.equal(parsed.rom instanceof Int16Array, true))
-  it('Defined stackPointer', () => assert.equal(typeof parsed.stackPointer, 'number'))
+  it('Defined Storage context', () => assert.equal(runtime.rom instanceof Int16Array, true))
+  it('Defined stackPointer', () => assert.equal(typeof runtime.stackPointer, 'number'))
 
   it('Decouples Storage', () => {
-    assert.notEqual(parsed.rom, rom)
-    assert.equal(parsed.rom.length < rom?.length, true)
+    assert.notEqual(runtime.rom, rom)
+    assert.equal(runtime.rom.length < rom?.length, true)
   })
 
-  it('Matches range', () => assert.equal(schema?.range, parsed.range))
+  it('Matches range', () => assert.equal(schema?.range, runtime.range))
 })
 
 describe('Core::IO', () => {
   const { rom, schema } = JSIS.create(8, ...mockSchema)
-  const parsed = JSIS.parse(rom)
+  const runtime = JSIS.parse(rom)
 
-  JSIS.write('age', mockRow.age, schema, parsed.rom)
-  JSIS.write('firstname', mockRow.firstname, schema, parsed.rom)
-  JSIS.write('followers', mockRow.followers, schema, parsed.rom)
-  JSIS.write('lastname', mockRow.lastname, schema, parsed.rom)
-  JSIS.write('score', mockRow.score, schema, parsed.rom)
-  JSIS.write('subscribed', mockRow.subscribed, schema, parsed.rom)
-  JSIS.write('description', mockRow.description, schema, parsed.rom)
+  JSIS.write('age', mockRow.age, schema, runtime.rom)
+  JSIS.write('firstname', mockRow.firstname, schema, runtime.rom)
+  JSIS.write('followers', mockRow.followers, schema, runtime.rom)
+  JSIS.write('lastname', mockRow.lastname, schema, runtime.rom)
+  JSIS.write('score', mockRow.score, schema, runtime.rom)
+  JSIS.write('subscribed', mockRow.subscribed, schema, runtime.rom)
+  JSIS.write('description', mockRow.description, schema, runtime.rom)
 
-  const age = JSIS.read('age', schema, parsed.rom)
-  const firstname = JSIS.read('firstname', schema, parsed.rom)
-  const followers = JSIS.read('followers', schema, parsed.rom)
-  const lastname = JSIS.read('lastname', schema, parsed.rom)
-  const score = JSIS.read('score', schema, parsed.rom)
-  const subscribed = JSIS.read('subscribed', schema, parsed.rom)
-  const description = JSIS.read('description', schema, parsed.rom)
+  const age = JSIS.read('age', schema, runtime.rom)
+  const firstname = JSIS.read('firstname', schema, runtime.rom)
+  const followers = JSIS.read('followers', schema, runtime.rom)
+  const lastname = JSIS.read('lastname', schema, runtime.rom)
+  const score = JSIS.read('score', schema, runtime.rom)
+  const subscribed = JSIS.read('subscribed', schema, runtime.rom)
+  const description = JSIS.read('description', schema, runtime.rom)
 
   it('Read/Write age', () => assert.equal(age, mockRow.age))
   it('Read/Write firstname', () => assert.equal(firstname, mockRow.firstname))
@@ -144,26 +145,26 @@ describe('Core::IO', () => {
   it('Read/Write description', () => assert.equal(subscribed, mockRow.subscribed))
 
   it('Update Field', () => {
-    const updateAge = JSIS.write('age', mockRow.age + 1, schema, parsed.rom)
+    const updateAge = JSIS.write('age', mockRow.age + 1, schema, runtime.rom)
 
     assert.equal(updateAge, true)
-    assert.equal(JSIS.read('age', schema, parsed.rom), mockRow.age + 1)
+    assert.equal(JSIS.read('age', schema, runtime.rom), mockRow.age + 1)
   })
 
   it('Read/Write specific row', () => {
     const mockName = 'Jane'
     const mockRow = 3
 
-    JSIS.write('firstname', mockName, schema, parsed.rom, mockRow)
-    assert.equal(mockName, JSIS.read('firstname', schema, parsed.rom, mockRow))
+    JSIS.write('firstname', mockName, schema, runtime.rom, mockRow)
+    assert.equal(mockName, JSIS.read('firstname', schema, runtime.rom, mockRow))
   })
 
   it('Catch overflow', () => {
     const mockName = 'Bobby'
     const mockRow = 20
 
-    assert.equal(JSIS.write('firstname', mockName, schema, parsed.rom, mockRow), false)
-    assert.equal(JSIS.read('firstname', schema, parsed.rom, mockRow), undefined)
+    assert.equal(JSIS.write('firstname', mockName, schema, runtime.rom, mockRow), false)
+    assert.equal(JSIS.read('firstname', schema, runtime.rom, mockRow), undefined)
   })
 })
 
@@ -173,8 +174,8 @@ describe('Core::File', () => {
   const scope = JSIS.scope<{ firstname: string; score: number }>(
     schema,
     rom,
-    (key, value, current) => {
-      console.log('ON UPDATE', { key, value, current })
+    (key, value, previousValue) => {
+      console.log('ON UPDATE', { key, value, previousValue })
     }
   )
 
