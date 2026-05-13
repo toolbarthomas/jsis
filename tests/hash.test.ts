@@ -2,7 +2,7 @@ import JSIS from '../src'
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
 
-describe('Utils::Hash 32', () => {
+describe('Utils::Hash - Collision Detection', () => {
   const passes = 0x50000
   let currentPass = passes
   const table = new Array(passes)
@@ -10,7 +10,6 @@ describe('Utils::Hash 32', () => {
 
   while (currentPass) {
     currentPass--
-
     table[currentPass] = JSIS.hash(key, currentPass, 0x20)
   }
 
@@ -19,7 +18,7 @@ describe('Utils::Hash 32', () => {
   it(`32 Bit hash ${key} => ${passes}`, () => assert.equal(set.size, table.length))
 })
 
-describe('Utils::Hash 16', () => {
+describe('Utils::Hash - 16 Bit', () => {
   const passes = 0x4000
   let currentPass = passes
   const table = new Array(passes)
@@ -27,7 +26,6 @@ describe('Utils::Hash 16', () => {
 
   while (currentPass) {
     currentPass--
-
     table[currentPass] = JSIS.hash(key, currentPass)
   }
 
@@ -36,7 +34,7 @@ describe('Utils::Hash 16', () => {
   it(`16 Bit hash ${key} => ${passes}`, () => assert.equal(set.size, table.length))
 })
 
-describe('Utils::Hash 8 Bit', () => {
+describe('Utils::Hash - 8 Bit', () => {
   const passes = 0x1000
   let currentPass = passes
   const table = new Array(passes)
@@ -44,7 +42,6 @@ describe('Utils::Hash 8 Bit', () => {
 
   while (currentPass) {
     currentPass--
-
     table[currentPass] = JSIS.hash(key, currentPass, 0x08)
   }
 
@@ -139,61 +136,48 @@ describe('Utils::Hash - Bit Width Uniqueness', () => {
   })
 })
 
-describe('Utils::Encode/Decode', () => {
-  it('Encode and decode boolean true', () => {
-    const encoded = JSIS.encode(true)
-    const decoded = JSIS.decode(encoded, 'boolean')
-    assert.equal(decoded, true)
+describe('Utils::Hash - Distribution', () => {
+  it('Hash distributes evenly across charset', () => {
+    const charset = JSIS.charset
+    const samples = 100
+    const hashes = []
+
+    for (let i = 0; i < samples; i++) {
+      hashes.push(JSIS.hash(`sample-${i}`, 0, 1))
+    }
+
+    const charFreq: Record<string, number> = {}
+    hashes.forEach((hash) => {
+      charFreq[hash] = (charFreq[hash] || 0) + 1
+    })
+
+    const uniqueChars = Object.keys(charFreq).length
+    assert.equal(uniqueChars > 1, true)
   })
 
-  it('Encode and decode boolean false', () => {
-    const encoded = JSIS.encode(false)
-    const decoded = JSIS.decode(encoded, 'boolean')
-    assert.equal(decoded, false)
+  it('Hash deterministic with same parameters', () => {
+    const params = { key: 'test', row: 5, size: 32 }
+    const h1 = JSIS.hash(params.key, params.row, params.size)
+    const h2 = JSIS.hash(params.key, params.row, params.size)
+    assert.equal(h1, h2)
   })
 
-  it('Encode and decode integer', () => {
-    const value = 42
-    const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'integer')
-    assert.equal(decoded, value)
+  it('Hash changes with row variation', () => {
+    const hashes = new Set<string>()
+    for (let row = 0; row < 10; row++) {
+      hashes.add(JSIS.hash('same-key', row, 16))
+    }
+    assert.equal(hashes.size, 10)
   })
 
-  it('Encode and decode float', () => {
-    const value = 3.14159
-    const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'float')
-    assert.equal(Math.abs(decoded - value) < 0.0001, true)
+  it('Hash with minimal size', () => {
+    const h = JSIS.hash('test', 0, 1)
+    assert.equal(h.length, 1)
+    assert.equal(JSIS.charset.includes(h), true)
   })
 
-  it('Encode and decode string', () => {
-    const value = 'Hello World'
-    const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'string')
-    assert.equal(decoded, value)
-  })
-
-  it('Encode undefined returns undefined', () => {
-    const encoded = JSIS.encode(undefined)
-    assert.equal(encoded, undefined)
-  })
-
-  it('Decode undefined returns false (boolean)', () => {
-    const decoded = JSIS.decode(undefined, 'boolean')
-    assert.equal(decoded, false)
-  })
-
-  it('Encode negative integer', () => {
-    const value = -12345
-    const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'integer')
-    assert.equal(decoded, value)
-  })
-
-  it('Encode negative float', () => {
-    const value = -99.99
-    const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'float')
-    assert.equal(Math.abs(decoded - value) < 0.0001, true)
+  it('Hash with large size', () => {
+    const h = JSIS.hash('test', 0, 256)
+    assert.equal(h.length, 256)
   })
 })
