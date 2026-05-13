@@ -620,6 +620,10 @@ class JSIS {
   }
 
   static normalize<T = Encodable>(key: string, value: T, schema: Schema) {
+    if (value instanceof Object) {
+      return
+    }
+
     const type = schema.fields[key].type
 
     let commit: undefined | Encodable = value
