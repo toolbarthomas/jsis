@@ -1,23 +1,63 @@
 import path, { extname } from 'node:path'
-import { unlinkSync } from 'node:fs'
+import { readdirSync, unlinkSync, statSync } from 'node:fs'
 
 import esbuild from 'esbuild'
 
-import { sync } from 'glob'
-;(() => {
+const findTestFiles = (dir, pattern = /\.test\.ts$/) => {
+  const files = []
+  try {
+    const entries = readdirSync(dir)
+    entries.forEach((entry) => {
+      const fullPath = path.join(dir, entry)
+      const stat = statSync(fullPath)
+      if (stat.isFile() && pattern.test(entry)) {
+        files.push(fullPath)
+      }
+    })
+  } catch (err) {
+    console.error(`Error reading directory ${dir}:`, err.message)
+  }
+  return files
+}
+
+const findFiles = (dir, pattern = /\.d\.ts$/) => {
+  const files = []
+  try {
+    const entries = readdirSync(dir)
+    entries.forEach((entry) => {
+      const fullPath = path.join(dir, entry)
+      const stat = statSync(fullPath)
+      if (stat.isFile() && pattern.test(entry)) {
+        files.push(fullPath)
+      }
+    })
+  } catch (err) {
+    // Directory may not exist yet
+  }
+  return files
+}
+
+;(async () => {
+  const testFiles = findTestFiles('tests')
+
   const defaults = {
     bundle: true,
-    entryPoints: [...sync(['tests/*.test.ts'])],
-    external: ['mocha'],
+    entryPoints: testFiles,
+    external: ['node:*'],
     minify: false,
     outdir: 'dist/tests',
     platform: 'node',
-    outExtension: { '.js': '.cjs' }
+    format: 'esm',
+    outExtension: { '.js': '.mjs' }
   }
 
-  esbuild.build(defaults).then(() => {
-    sync('./dist/tests/*.d.ts').forEach((path) => {
-      unlinkSync(path)
-    })
+  await esbuild.build(defaults)
+
+  // Clean up type definitions
+  findFiles('dist/tests', /\.d\.ts$/).forEach((filePath) => {
+    unlinkSync(filePath)
   })
+
+  console.log(`Built ${testFiles.length} test files`)
 })()
+
