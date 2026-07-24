@@ -1,11 +1,9 @@
-import JSIS from './index'
-
 export type Encodable = string | boolean | number
 export type Decodable = number | ArrayLike<number>
 export type ROM = Int16Array
 
 export type FieldArguments = {
-  type?: (typeof JSIS.types)[number]
+  type?: 'boolean' | 'float' | 'integer' | 'string'
   size?: number
   key?: string
 }
@@ -31,11 +29,11 @@ export type Runtime = {
 }
 
 export type Scope<M = Middleware> = {
-  onUpdate: <T = Encodable, R = void>(key: string, value?: T, previousValue?: Encodable) => R
+  onUpdate?: <T = Encodable, R = void>(key: string, value?: T, previousValue?: Encodable) => R | void
   ram?: ROM
   currentIndex?: number
   middleware: M
-  row: <T = M>(index?: number) => Middleware<T>
+  row: (index?: number) => M
 }
 
 export type Middleware<T = Record<string, string>> = Record<string, string> & T

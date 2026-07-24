@@ -6,7 +6,6 @@ import {
   ROM,
   Schema,
   Scope,
-  Resolver,
   Middleware,
   Runtime
 } from './types'
@@ -626,7 +625,7 @@ class JSIS {
 
     const type = schema.fields[key].type
 
-    let commit: undefined | Encodable = value
+    let commit: undefined | Encodable = value as Encodable
 
     const mismatch =
       !type || (typeof value !== 'number' && type === 'float') || typeof value !== type
@@ -674,11 +673,11 @@ class JSIS {
     const scope: Scope<T> = {
       ram: runtime.rom,
       onUpdate: function (key, value, initial) {
-        return onUpdate(key, value, initial)
+        return onUpdate?.(key, value, initial)
       },
       currentIndex: undefined,
       middleware: (function () {
-        const instance: T = {}
+        const instance: T = {} as T
 
         if (!schema || !rom) {
           return instance
@@ -686,34 +685,34 @@ class JSIS {
 
         Object.keys(schema.fields).forEach((key) => {
           Object.defineProperty(instance, key, {
-            get: function <V = Encodable>(): V | undefined {
+            get: function (): Encodable | boolean | undefined {
               if (!scope.ram) {
                 return
               }
 
-              const currentIndex = scope.currentIndex
-
               const type = schema.fields[key].type
 
-              const value = JSIS.read(key, schema, scope.ram, scope.currentIndex, true)
+              const value = JSIS.read(key, schema, scope.ram, scope.currentIndex)
 
-              return JSIS.clamp(value, type)
+              if (value === undefined) {
+                return undefined
+              }
+
+              return JSIS.clamp(value, type) as Encodable | boolean | undefined
             },
-            set: function <V = Encodable>(value: V) {
-              const currentIndex = scope.currentIndex
-
+            set: function (value: any) {
               const commit = JSIS.normalize(key, value, schema)
 
               if (commit === undefined || !scope.ram) {
                 return
               }
 
-              const current = scope.middleware[key]
+              const current = (scope.middleware as Record<string, any>)[key]
 
-              JSIS.write(key, commit, schema, scope.ram, scope.currentIndex, true)
+              JSIS.write(key, commit, schema, scope.ram, scope.currentIndex)
 
-              if (current !== scope.middleware[key]) {
-                scope.onUpdate(key, scope.middleware[key], current)
+              if (current !== (scope.middleware as Record<string, any>)[key]) {
+                scope.onUpdate?.(key, (scope.middleware as Record<string, any>)[key], current)
               }
             },
             enumerable: true,
@@ -723,7 +722,7 @@ class JSIS {
 
         return instance
       })(),
-      row: function <R = T>(index) {
+      row: function (index?: number) {
         if (this.middleware && this.currentIndex === index) {
           return this.middleware
         }
