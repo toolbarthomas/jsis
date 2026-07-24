@@ -10,7 +10,7 @@ const mockSchema = [
   { key: 'Subscribed', type: 'boolean' },
   { key: 'Followers', type: 'integer' },
   { key: 'Description', type: 'string', size: 256 }
-]
+] as const
 
 describe('Schema::Create', () => {
   const { rom, schema } = JSIS.create(8, ...mockSchema)

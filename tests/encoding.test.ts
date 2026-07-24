@@ -25,7 +25,7 @@ describe('Utils::Encode/Decode - Basic', () => {
   it('Encode and decode float', () => {
     const value = 3.14159
     const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'float')
+    const decoded = JSIS.decode(encoded, 'float') as number
     assert.equal(Math.abs(decoded - value) < 0.0001, true)
   })
 
@@ -56,7 +56,7 @@ describe('Utils::Encode/Decode - Basic', () => {
   it('Encode negative float', () => {
     const value = -99.99
     const encoded = JSIS.encode(value)
-    const decoded = JSIS.decode(encoded, 'float')
+    const decoded = JSIS.decode(encoded, 'float') as number
     assert.equal(Math.abs(decoded - value) < 0.0001, true)
   })
 })
@@ -65,7 +65,7 @@ describe('Utils::Encode/Decode - Extended Types', () => {
   it('Encode zero values', () => {
     const encoded = JSIS.encode(0)
     assert.equal(encoded instanceof Int16Array, true)
-    assert.equal(encoded[0], 0)
+    assert.equal((encoded as Int16Array)[0], 0)
   })
 
   it('Encode and decode multi-character strings', () => {
@@ -116,7 +116,7 @@ describe('Utils::Decode Type Inference', () => {
 
   it('Decode string null termination', () => {
     const encoded = JSIS.encode('Test')
-    const decoded = JSIS.decode(encoded, 'string')
+    const decoded = JSIS.decode(encoded, 'string') as string | undefined
     assert.equal(decoded, 'Test')
     assert.equal(decoded?.includes('\0'), false)
   })

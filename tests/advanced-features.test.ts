@@ -192,7 +192,7 @@ describe('Features::Complex Schemas', () => {
 
     const largeText = 'Lorem ipsum '.repeat(50)
     JSIS.write('content', largeText, schema, rom)
-    const result = JSIS.read('content', schema, rom)
+    const result = JSIS.read('content', schema, rom) as string | undefined
 
     assert.equal(result?.startsWith('Lorem ipsum'), true)
   })

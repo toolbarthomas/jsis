@@ -10,7 +10,7 @@ describe('Scope::Row Operations', () => {
     { key: 'Age', type: 'integer' },
     { key: 'Subscribed', type: 'boolean' },
     { key: 'Followers', type: 'integer' }
-  ]
+  ] as const
 
   const { rom, schema } = JSIS.create(4, ...mockSchema)
 

@@ -13,13 +13,13 @@ describe('Pointer::Calculation', () => {
   it('Pointer respects field order', () => {
     const p1 = JSIS.getPointer('first', schema, 0)
     const p2 = JSIS.getPointer('second', schema, 0)
-    assert.equal(p1 < p2, true)
+    assert.equal(p1! < p2!, true)
   })
 
   it('Pointer accounts for row offset', () => {
     const row0Ptr = JSIS.getPointer('first', schema, 0)
     const row1Ptr = JSIS.getPointer('first', schema, 1)
-    assert.equal(row1Ptr - row0Ptr, schema.range)
+    assert.equal(row1Ptr! - row0Ptr!, schema.range)
   })
 
   it('Invalid pointer returns undefined', () => {

@@ -23,7 +23,7 @@ const mockSchema = [
   { key: 'Subscribed', type: 'boolean' },
   { key: 'Followers', type: 'integer' },
   { key: 'Description', type: 'string', size: 256 }
-]
+] as const
 
 describe('IO::Basic Read/Write', () => {
   const { rom, schema } = JSIS.create(8, ...mockSchema)
@@ -195,15 +195,15 @@ describe('IO::String Edge Cases', () => {
   it('Write string at size limit', () => {
     const longString = 'a'.repeat(256)
     JSIS.write('text', longString, schema, rom)
-    const result = JSIS.read('text', schema, rom)
-    assert.equal(result?.length <= 256, true)
+    const result = JSIS.read('text', schema, rom) as string | undefined
+    assert.equal((result?.length ?? 0) <= 256, true)
   })
 
   it('Write string exceeding size limit', () => {
     const veryLong = 'a'.repeat(500)
     JSIS.write('text', veryLong, schema, rom)
-    const result = JSIS.read('text', schema, rom)
-    assert.equal(result?.length <= 256, true)
+    const result = JSIS.read('text', schema, rom) as string | undefined
+    assert.equal((result?.length ?? 0) <= 256, true)
   })
 })
 

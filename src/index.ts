@@ -66,12 +66,12 @@ class JSIS {
    * @param fields The expected field configuration entries for this schema.
    */
   static create<T = Schema>(rows: number, ...fields: FieldArguments[]) {
-    const schema = fields ? JSIS.defineSchema(...fields) : undefined
+    const schema = JSIS.defineSchema<T & Schema>(...fields)
 
-    const pointer = schema?.header?.length || 0
+    const pointer = schema.header?.length || 0
 
-    const rom = schema && new Int16Array(pointer + schema.range * (rows || JSIS.ROWS))
-    if (rom && schema.header) {
+    const rom = new Int16Array(pointer + schema.range * (rows || JSIS.ROWS))
+    if (schema.header) {
       rom.set(schema.header, 0)
     }
 
@@ -606,7 +606,7 @@ class JSIS {
     return { provider, database }
   }
 
-  static clamp(value: Encodable, type?: Field['type']) {
+  static clamp(value?: Encodable, type?: Field['type']) {
     if (!value) {
       return value
     }
@@ -685,7 +685,7 @@ class JSIS {
 
         Object.keys(schema.fields).forEach((key) => {
           Object.defineProperty(instance, key, {
-            get: function (): Encodable | boolean | undefined {
+            get: function (): Encodable | undefined {
               if (!scope.ram) {
                 return
               }
@@ -694,11 +694,7 @@ class JSIS {
 
               const value = JSIS.read(key, schema, scope.ram, scope.currentIndex)
 
-              if (value === undefined) {
-                return undefined
-              }
-
-              return JSIS.clamp(value, type) as Encodable | boolean | undefined
+              return JSIS.clamp(value, type)
             },
             set: function (value: any) {
               const commit = JSIS.normalize(key, value, schema)
