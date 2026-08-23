@@ -1,19 +1,22 @@
 {
   "name": "@toolbarthomas/jsis",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Javascript Signed Integer Storage",
   "type": "module",
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "main": "./dist/index.min.js",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "main": "./dist/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
     "./dist/index.js",
     "./dist/index.min.js",
+    "./dist/index.d.ts",
+    "./dist/types.d.ts",
     "./src/index.ts",
     "./src/types.d.ts",
     "./tests/",
@@ -21,7 +24,8 @@
     "./tsconfig.json"
   ],
   "scripts": {
-    "build": "node ./node/build.mjs --minify && node ./node/build.mjs",
+    "build": "node ./node/build.mjs --minify && node ./node/build.mjs && npm run build:types",
+    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly --outDir dist && cp src/types.d.ts dist/types.d.ts",
     "predev": "npm run build",
     "pretest": "tsc --noEmit",
     "test": "node ./node/test.mjs && node --test dist/tests/*.mjs",
@@ -31,8 +35,8 @@
   "license": "MIT",
   "devDependencies": {
     "@toolbarthomas/argumentje": "^0.8.0",
-    "@types/node": "^26.1.1",
-    "esbuild": "^0.28.1",
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2"
   }
