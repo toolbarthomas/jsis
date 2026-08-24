@@ -1,6 +1,6 @@
 {
   "name": "@toolbarthomas/jsis",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Javascript Signed Integer Storage",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -26,6 +26,7 @@
   "scripts": {
     "build": "node ./node/build.mjs --minify && node ./node/build.mjs && npm run build:types",
     "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly --outDir dist && cp src/types.d.ts dist/types.d.ts",
+    "prepare": "npm run build",
     "predev": "npm run build",
     "pretest": "tsc --noEmit",
     "test": "node ./node/test.mjs && node --test dist/tests/*.mjs",
