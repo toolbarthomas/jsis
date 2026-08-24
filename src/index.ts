@@ -586,6 +586,93 @@ class JSIS {
     return true
   }
 
+  /**
+   * Writes a flat array of values into a single field across consecutive
+   * rows, delegating each write to the existing write() method.
+   *
+   * @param key The existing field key within the defined schema.
+   * @param values The values to write, one per consecutive row.
+   * @param schema Encodes the values to write according to the existing schema.
+   * @param rom The actual storage context.
+   * @param startRow The row to start writing from.
+   */
+  static writeColumn(
+    key: string,
+    values: Encodable[],
+    schema: Schema,
+    rom: ROM,
+    startRow?: number
+  ) {
+    if (!key || !values || !schema || !rom) {
+      return 0
+    }
+
+    const start = startRow ?? 0
+
+    let written = 0
+    let i = 0
+
+    while (i < values.length) {
+      if (JSIS.write(key, values[i], schema, rom, start + i)) {
+        written++
+      }
+
+      i++
+    }
+
+    return written
+  }
+
+  /**
+   * Writes an array of row objects, each keyed by field name, across
+   * consecutive rows, delegating each write to the existing write() method.
+   *
+   * @param rows The row objects to write, one per consecutive row.
+   * @param schema Encodes the values to write according to the existing schema.
+   * @param rom The actual storage context.
+   * @param startRow The row to start writing from.
+   */
+  static writeRows(rows: Record<string, Encodable>[], schema: Schema, rom: ROM, startRow?: number) {
+    if (!rows || !schema || !rom) {
+      return 0
+    }
+
+    const start = startRow ?? 0
+
+    let written = 0
+    let i = 0
+
+    while (i < rows.length) {
+      const row = rows[i]
+      const currentRow = start + i
+
+      i++
+
+      if (!row) {
+        continue
+      }
+
+      const fields = Object.keys(row)
+
+      let complete = true
+      let f = 0
+
+      while (f < fields.length) {
+        if (!JSIS.write(fields[f], row[fields[f]], schema, rom, currentRow)) {
+          complete = false
+        }
+
+        f++
+      }
+
+      if (complete) {
+        written++
+      }
+    }
+
+    return written
+  }
+
   static defineStorageProvider(files?: number, size?: number, namespace?: string) {
     const range = files || JSIS.BITS * JSIS.BITS
 
